@@ -422,7 +422,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
                         game.StarterGui:SetCore(
                             "SendNotification",
                             {
-                                Title = "Dreware",
+                                Title = "patchmade",
                                 Text = "Disabled",
                                 Icon = "",
                                 Duration = 1
@@ -435,7 +435,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
                         game.StarterGui:SetCore(
                             "SendNotification",
                             {
-                                Title = "dreware",
+                                Title = "patchmade",
                                 Text = "Enabled",
                                 Icon = "",
                                 Duration = 1
