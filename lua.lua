@@ -73,60 +73,24 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    local keyPressed = input.KeyCode.Name
-    local Config = getgenv().Config
-    
-    pcall(function()
-        -- Silent Aim Toggle
-        if keyPressed == Config.Keybinds.SilentAim then
-            Config.States.SilentAim = not Config.States.SilentAim
-            notify("Silent Aim", Config.States.SilentAim and "Enabled" or "Disabled")
-        end
-        
-        -- Kill Aura Toggle
-        if keyPressed == Config.Keybinds.KillAura then
-            Config.States.KillAura = not Config.States.KillAura
-            notify("Kill Aura", Config.States.KillAura and "Enabled" or "Disabled")
-        end
-        
-        -- Fly Toggle
-        if keyPressed == Config.Keybinds.Fly then
-            Config.States.Fly = not Config.States.Fly
-            notify("Flight", Config.States.Fly and "Enabled" or "Disabled")
-        end
-        
-        -- ESP Toggle
-        if keyPressed == Config.Keybinds.ESP then
-            Config.States.ESP = not Config.States.ESP
-            notify("ESP", Config.States.ESP and "Enabled" or "Disabled")
-        end
-        
-        -- Anti Stomp Toggle
-        if keyPressed == Config.Keybinds.AntiStomp then
-            Config.States.AntiStomp = not Config.States.AntiStomp
-            notify("Anti Stomp", Config.States.AntiStomp and "Enabled" or "Disabled")
-        end
-    end)
+    -- Handle manual shooting when silent aim is enabled
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and Config.States.SilentAim and LockedTarget then
+        ShootTarget(LockedTarget)
+    end
 end)
 
 -- Silent Aim Logic
 function performSilentAim()
     if not Config or not Config.States or not Config.Settings then return end
     
-    -- Clear LockedTarget when silent aim is disabled
-    if not Config.States.SilentAim then
-        LockedTarget = nil
-        return
-    end
-    
+    -- Only update LockedTarget, don't auto-shoot
     if Config.States.SilentAim then
         local closestPlayer = GetClosestTargetToCursor()
         if closestPlayer and closestPlayer.Character then
             LockedTarget = closestPlayer.Character:FindFirstChild(Config.Settings.SilentAim.HitPart or "Head")
-            if LockedTarget then
-                ShootTarget(LockedTarget)
-            end
         end
+    else
+        LockedTarget = nil
     end
 end
 
@@ -314,4 +278,85 @@ function ShootTarget(Target)
             )
         end
     end
-end 
+end
+
+-- Add a function to reset all features
+function resetAllFeatures()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+
+    -- Reset Silent Aim
+    LockedTarget = nil
+
+    -- Reset Fly
+    if humanoidRootPart then
+        humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+
+    -- Reset Walkspeed
+    if humanoid then
+        humanoid.WalkSpeed = 16
+    end
+
+    -- Reset ESP
+    for _, player in ipairs(Players:GetPlayers()) do
+        local playerCharacter = player.Character
+        if playerCharacter then
+            local head = playerCharacter:FindFirstChild("Head")
+            if head then
+                local esp = head:FindFirstChild("ESP")
+                if esp then esp:Destroy() end
+            end
+        end
+    end
+end
+
+-- Modify the keybind handler
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    local keyPressed = input.KeyCode.Name
+    local Config = getgenv().Config
+    
+    pcall(function()
+        -- Silent Aim Toggle
+        if keyPressed == Config.Keybinds.SilentAim then
+            Config.States.SilentAim = not Config.States.SilentAim
+            if not Config.States.SilentAim then
+                LockedTarget = nil
+            end
+            notify("Silent Aim", Config.States.SilentAim and "Enabled" or "Disabled")
+        end
+        
+        -- Fly Toggle
+        if keyPressed == Config.Keybinds.Fly then
+            Config.States.Fly = not Config.States.Fly
+            if not Config.States.Fly and LocalPlayer.Character then
+                LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            end
+            notify("Flight", Config.States.Fly and "Enabled" or "Disabled")
+        end
+        
+        -- ESP Toggle
+        if keyPressed == Config.Keybinds.ESP then
+            Config.States.ESP = not Config.States.ESP
+            if not Config.States.ESP then
+                -- Remove all ESP elements
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character then
+                        local head = player.Character:FindFirstChild("Head")
+                        if head then
+                            local esp = head:FindFirstChild("ESP")
+                            if esp then esp:Destroy() end
+                        end
+                    end
+                end
+            end
+            notify("ESP", Config.States.ESP and "Enabled" or "Disabled")
+        end
+    end)
+end)
+
+-- Add this to handle script cleanup
+game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(resetAllFeatures) 
