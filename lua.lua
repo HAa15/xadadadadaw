@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local LockedTarget = nil
 
 -- Error Prevention
 if not LocalPlayer then
@@ -11,9 +13,50 @@ if not LocalPlayer then
     LocalPlayer = Players.LocalPlayer
 end
 
--- Wait for Config to be loaded
+-- Wait for Config to be loaded and initialize default settings
 while not getgenv().Config do
     task.wait()
+end
+
+-- Initialize Config structure if parts are missing
+if not getgenv().Config.Settings then
+    getgenv().Config.Settings = {
+        SilentAim = {
+            HitPart = "Head",
+            FOV = 145
+        },
+        Fly = {
+            Speed = 50
+        },
+        Speed = {
+            Value = 16
+        },
+        ESP = {
+            Color = Color3.fromRGB(255, 255, 255),
+            TextSize = 14
+        }
+    }
+end
+
+if not getgenv().Config.States then
+    getgenv().Config.States = {
+        SilentAim = false,
+        KillAura = false,
+        Fly = false,
+        ESP = false,
+        Speed = false,
+        AntiStomp = false
+    }
+end
+
+if not getgenv().Config.Keybinds then
+    getgenv().Config.Keybinds = {
+        SilentAim = "C",
+        KillAura = "K",
+        Fly = "X",
+        ESP = "Z",
+        AntiStomp = "G"
+    }
 end
 
 -- Notification Function
@@ -68,10 +111,12 @@ end)
 
 -- Silent Aim Logic
 function performSilentAim()
+    if not Config or not Config.States or not Config.Settings then return end
+    
     if Config.States.SilentAim then
         local closestPlayer = GetClosestTargetToCursor()
         if closestPlayer and closestPlayer.Character then
-            LockedTarget = closestPlayer.Character:FindFirstChild(Config.Settings.SilentAim.HitPart)
+            LockedTarget = closestPlayer.Character:FindFirstChild(Config.Settings.SilentAim.HitPart or "Head")
             if LockedTarget then
                 ShootTarget(LockedTarget)
             end
@@ -81,6 +126,8 @@ end
 
 -- Fly Logic
 function updateFly()
+    if not Config or not Config.States or not Config.Settings then return end
+    
     if Config.States.Fly then
         local character = LocalPlayer.Character
         local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -107,25 +154,29 @@ function updateFly()
                 direction = direction - Vector3.new(0, 1, 0)
             end
             
-            humanoidRootPart.Velocity = direction * Config.Settings.Fly.Speed
+            humanoidRootPart.Velocity = direction * (Config.Settings.Fly.Speed or 50)
         end
     end
 end
 
 -- Walkspeed Logic
 function updateWalkspeed()
+    if not Config or not Config.States or not Config.Settings then return end
+    
     if Config.States.Speed then
         local character = LocalPlayer.Character
         local humanoid = character and character:FindFirstChild("Humanoid")
         
         if humanoid then
-            humanoid.WalkSpeed = Config.Settings.Speed.Value
+            humanoid.WalkSpeed = Config.Settings.Speed.Value or 16
         end
     end
 end
 
 -- Name ESP Logic
 function updateESP()
+    if not Config or not Config.States or not Config.Settings then return end
+    
     if Config.States.ESP then
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
@@ -146,8 +197,8 @@ function updateESP()
                         nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
                         nameLabel.BackgroundTransparency = 1
                         nameLabel.Text = player.Name
-                        nameLabel.TextColor3 = Config.Settings.ESP.Color
-                        nameLabel.TextSize = Config.Settings.ESP.TextSize
+                        nameLabel.TextColor3 = Config.Settings.ESP.Color or Color3.fromRGB(255, 255, 255)
+                        nameLabel.TextSize = Config.Settings.ESP.TextSize or 14
                         nameLabel.Parent = esp
                     end
                 end
@@ -194,4 +245,66 @@ end)
 
 if LocalPlayer.Character then
     -- Initial character setup
+end
+
+-- Add these functions for Silent Aim
+function GetClosestTargetToCursor()
+    local mousePosition = UserInputService:GetMouseLocation()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if IsValidTarget(player) then
+            local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local screenPoint, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
+                if onScreen then
+                    local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePosition).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+function IsValidTarget(player)
+    if not player.Character then return false end
+    if player == LocalPlayer then return false end
+    if not player.Character:FindFirstChild("Humanoid") then return false end
+    if player.Character.Humanoid.Health <= 0 then return false end
+    return true
+end
+
+function ShootTarget(Target)
+    if not Target then return end
+    
+    local Tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    if Tool and Tool:FindFirstChild("Handle") then
+        local targetPos = Target.Position
+        local handlePos = Tool.Handle.Position
+        
+        -- Create multiple shot positions for better penetration
+        local shotPositions = {
+            handlePos,  -- Original gun position
+            targetPos + Vector3.new(0, 0.5, 0),  -- Slightly above target
+            targetPos + Vector3.new(0, -0.5, 0), -- Slightly below target
+        }
+        
+        -- Fire from each position
+        for _, pos in ipairs(shotPositions) do
+            game:GetService("ReplicatedStorage").MainEvent:FireServer(
+                "ShootGun",
+                Tool.Handle,
+                pos,
+                targetPos,
+                Target,
+                Vector3.new(0, 0, 0)  -- No spread
+            )
+        end
+    end
 end 
