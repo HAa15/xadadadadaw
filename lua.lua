@@ -113,6 +113,12 @@ end)
 function performSilentAim()
     if not Config or not Config.States or not Config.Settings then return end
     
+    -- Clear LockedTarget when silent aim is disabled
+    if not Config.States.SilentAim then
+        LockedTarget = nil
+        return
+    end
+    
     if Config.States.SilentAim then
         local closestPlayer = GetClosestTargetToCursor()
         if closestPlayer and closestPlayer.Character then
@@ -128,34 +134,40 @@ end
 function updateFly()
     if not Config or not Config.States or not Config.Settings then return end
     
-    if Config.States.Fly then
-        local character = LocalPlayer.Character
-        local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-        
+    local character = LocalPlayer.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not Config.States.Fly then
+        -- Reset velocity when fly is disabled
         if humanoidRootPart then
-            local direction = Vector3.new()
-            
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                direction = direction + Camera.CFrame.LookVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                direction = direction - Camera.CFrame.LookVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                direction = direction - Camera.CFrame.RightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                direction = direction + Camera.CFrame.RightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                direction = direction + Vector3.new(0, 1, 0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                direction = direction - Vector3.new(0, 1, 0)
-            end
-            
-            humanoidRootPart.Velocity = direction * (Config.Settings.Fly.Speed or 50)
+            humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         end
+        return
+    end
+    
+    if Config.States.Fly and humanoidRootPart then
+        local direction = Vector3.new()
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            direction = direction + Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            direction = direction - Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            direction = direction - Camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            direction = direction + Camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            direction = direction + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            direction = direction - Vector3.new(0, 1, 0)
+        end
+        
+        humanoidRootPart.Velocity = direction * (Config.Settings.Fly.Speed or 50)
     end
 end
 
@@ -221,13 +233,8 @@ end
 
 -- Add these to your RunService.Heartbeat connection
 RunService.Heartbeat:Connect(function()
-    if Config.States.SilentAim then
-        performSilentAim()
-    end
-    
-    if Config.States.Fly then
-        updateFly()
-    end
+    performSilentAim() -- Always run to handle enable/disable
+    updateFly() -- Always run to handle enable/disable
     
     if Config.States.Speed then
         updateWalkspeed()
