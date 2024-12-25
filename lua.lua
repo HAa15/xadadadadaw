@@ -1,4 +1,3 @@
--- Configuration
  
 
 -- Load essential services
@@ -7,42 +6,61 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- Keybind Handler
+-- Error Prevention
+if not LocalPlayer then
+    warn("LocalPlayer not found! Waiting...")
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    LocalPlayer = Players.LocalPlayer
+end
+
+-- Safe function calls
+function safeCallback(callback, ...)
+    if type(callback) == "function" then
+        local success, result = pcall(callback, ...)
+        if not success then
+            warn("Callback error:", result)
+        end
+    end
+end
+
+-- Keybind Handler with error handling
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    -- Convert input to key name
     local keyPressed = input.KeyCode.Name
     
-    -- Silent Aim Toggle
-    if keyPressed == Config.SilentAim.Keybind then
-        Config.SilentAim.Enabled = not Config.SilentAim.Enabled
-        notify("Silent Aim", Config.SilentAim.Enabled and "Enabled" or "Disabled")
-    end
-    
-    -- Combat Keybinds
-    if keyPressed == Config.Combat.KillAuraKeybind then
-        Config.Combat.KillAura = not Config.Combat.KillAura
-        notify("Kill Aura", Config.Combat.KillAura and "Enabled" or "Disabled")
-    end
-    
-    -- Movement Keybinds
-    if keyPressed == Config.Movement.Fly.Keybind then
-        Config.Movement.Fly.Enabled = not Config.Movement.Fly.Enabled
-        notify("Flight", Config.Movement.Fly.Enabled and "Enabled" or "Disabled")
-    end
-    
-    -- Visual Keybinds
-    if keyPressed == Config.Visuals.ESP.Keybind then
-        Config.Visuals.ESP.Enabled = not Config.Visuals.ESP.Enabled
-        notify("ESP", Config.Visuals.ESP.Enabled and "Enabled" or "Disabled")
-    end
-    
-    -- Safety Keybinds
-    if keyPressed == Config.Safety.AntiStomp.Keybind then
-        Config.Safety.AntiStomp.Enabled = not Config.Safety.AntiStomp.Enabled
-        notify("Anti Stomp", Config.Safety.AntiStomp.Enabled and "Enabled" or "Disabled")
-    end
+    -- Wrap all toggle operations in pcall
+    pcall(function()
+        -- Silent Aim Toggle
+        if keyPressed == Config.SilentAim.Keybind then
+            Config.SilentAim.Enabled = not Config.SilentAim.Enabled
+            notify("Silent Aim", Config.SilentAim.Enabled and "Enabled" or "Disabled")
+        end
+        
+        -- Combat Keybinds
+        if keyPressed == Config.Combat.KillAuraKeybind then
+            Config.Combat.KillAura = not Config.Combat.KillAura
+            notify("Kill Aura", Config.Combat.KillAura and "Enabled" or "Disabled")
+        end
+        
+        -- Movement Keybinds
+        if keyPressed == Config.Movement.Fly.Keybind then
+            Config.Movement.Fly.Enabled = not Config.Movement.Fly.Enabled
+            notify("Flight", Config.Movement.Fly.Enabled and "Enabled" or "Disabled")
+        end
+        
+        -- Visual Keybinds
+        if keyPressed == Config.Visuals.ESP.Keybind then
+            Config.Visuals.ESP.Enabled = not Config.Visuals.ESP.Enabled
+            notify("ESP", Config.Visuals.ESP.Enabled and "Enabled" or "Disabled")
+        end
+        
+        -- Safety Keybinds
+        if keyPressed == Config.Safety.AntiStomp.Keybind then
+            Config.Safety.AntiStomp.Enabled = not Config.Safety.AntiStomp.Enabled
+            notify("Anti Stomp", Config.Safety.AntiStomp.Enabled and "Enabled" or "Disabled")
+        end
+    end)
 end)
 
 -- Notification Function
